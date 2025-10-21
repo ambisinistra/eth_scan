@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ethereum Transaction Viewer</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+        }
+        .info {
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        table {
+            width: 100%;
+            background: white;
+            border-collapse: collapse;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        th {
+            background-color: #4CAF50;
+            color: white;
+            padding: 12px;
+            text-align: left;
+        }
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #ddd;
+        }
+        tr:hover {
+            background-color: #f5f5f5;
+        }
+        .address {
+            font-family: monospace;
+            font-size: 12px;
+            word-break: break-all;
+        }
+        .hash {
+            font-family: monospace;
+            font-size: 11px;
+            color: #0066cc;
+            word-break: break-all;
+        }
+        .success {
+            color: green;
+            font-weight: bold;
+        }
+        .failed {
+            color: red;
+            font-weight: bold;
+        }
+        .pagination {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 10px;
+            margin-top: 20px;
+            padding: 20px;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .pagination a, .pagination span {
+            padding: 8px 16px;
+            text-decoration: none;
+            color: #333;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        .pagination a:hover {
+            background-color: #4CAF50;
+            color: white;
+        }
+        .pagination .current {
+            background-color: #4CAF50;
+            color: white;
+            font-weight: bold;
+        }
+        .pagination .disabled {
+            color: #ccc;
+            cursor: not-allowed;
+        }
+        .eth-value {
+            font-weight: bold;
+            color: #0066cc;
+        }
+    </style>
+</head>
+<body>
+    <h1>🔗 Ethereum Transaction Viewer</h1>
+    
+    <div class="info">
+        <strong>Total Transactions:</strong> {{ total }} | 
+        <strong>Page:</strong> {{ page }} of {{ total_pages }} | 
+        <strong>Showing:</strong> {{ transactions|length }} transactions
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Block</th>
+                <th>Timestamp</th>
+                <th>Hash</th>
+                <th>From</th>
+                <th>To</th>
+                <th>Value (ETH)</th>
+                <th>Gas Used</th>
+                <th>Status</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for tx in transactions %}
+            <tr>
+                <td>{{ tx.block }}</td>
+                <td>{{ tx.timestamp }}</td>
+                <td class="hash">{{ tx.hash[:16] }}...{{ tx.hash[-8:] }}</td>
+                <td class="address">{{ tx['from'][:10] }}...{{ tx['from'][-8:] }}</td>
+                <td class="address">{{ tx.to[:10] }}...{{ tx.to[-8:] }}</td>
+                <td class="eth-value">{{ "%.6f"|format(tx.value_eth) }}</td>
+                <td>{{ tx.gas_used }}</td>
+                <td class="{% if tx.status == 'Success' %}success{% else %}failed{% endif %}">
+                    {{ tx.status }}
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="pagination">
+        {% if has_prev %}
+            <a href="?page=1">« First</a>
+            <a href="?page={{ page - 1 }}">‹ Previous</a>
+        {% else %}
+            <span class="disabled">« First</span>
+            <span class="disabled">‹ Previous</span>
+        {% endif %}
+
+        <span class="current">Page {{ page }} of {{ total_pages }}</span>
+
+        {% if has_next %}
+            <a href="?page={{ page + 1 }}">Next ›</a>
+            <a href="?page={{ total_pages }}">Last »</a>
+        {% else %}
+            <span class="disabled">Next ›</span>
+            <span class="disabled">Last »</span>
+        {% endif %}
+    </div>
+</body>
+</html>
