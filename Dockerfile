@@ -9,12 +9,12 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Копируем код приложения
-COPY app.py .
-COPY result.txt .
+COPY app_input.py .
+COPY .env .
 COPY templates/ templates/
 
 # Открываем порт
 EXPOSE 5000
 
 # Запускаем приложение
-CMD ["python", "app.py"]
+CMD ["python", "app_input.py"]
