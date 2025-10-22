@@ -199,13 +199,16 @@ def transactions():
     has_next = page < total_pages
     
     return render_template('transactions.html',
-                         transactions=processed_txs,
-                         page=page,
-                         total_pages=total_pages,
-                         has_prev=has_prev,
-                         has_next=has_next,
-                         total=total,
-                         filename=filename)
+                            transactions=processed_txs,
+                            page=page,
+                            total_pages=total_pages,
+                            has_prev=has_prev,
+                            has_next=has_next,
+                            total=total,
+                            wallet_address=wallet_address,
+                            start_block=start_block,      
+                            end_block=end_block,          
+                            filename=filename)
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5000, debug=True)
