@@ -115,8 +115,8 @@ app = Flask(__name__)
 def index():
     if request.method == 'POST':
         wallet_address = request.form.get('wallet_address')
-        start_block = request.form.get('start_block')
-        end_block = request.form.get('end_block')
+        start_block = int(request.form.get('start_block'))
+        end_block = int(request.form.get('end_block'))
         
         last_block_n = get_latest_block_number()
         # Check if API call succeeded

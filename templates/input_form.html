@@ -51,22 +51,6 @@
                 required>
             <small id="error-msg" style="color:red;"></small>
         </div>
-        <button type="submit">Отправить</button>
-    </form>
-
-    <script>
-    function validateForm() {
-        const addr = document.getElementById("wallet_address").value.trim();
-        const errorMsg = document.getElementById("error-msg");
-        const regex = /^0x[a-fA-F0-9]{40}$/;
-        if (!regex.test(addr)) {
-            errorMsg.textContent = "Invalid Ethereum-address format.";
-            return false;  // отменяем отправку
-        }
-        errorMsg.textContent = "";
-        return true;
-    }
-    </script>
         
         <div class="form-group">
             <label for="start_block">Starting block:</label>
@@ -81,6 +65,19 @@
         </div>
         
         <button type="submit">Отправить</button>
-    </form>
+    </form>  <!-- ✅ Form closes here, after all fields -->
+
+    <script>
+    function validateForm() {
+        const addr = document.getElementById("wallet_address").value.trim();
+        const errorMsg = document.getElementById("error-msg");
+        const regex = /^0x[a-fA-F0-9]{40}$/;
+        if (!regex.test(addr)) {
+            errorMsg.textContent = "Invalid Ethereum-address format.";
+            return false;
+        }
+        errorMsg.textContent = "";
+        return true;
+    }
+    </script>
 </body>
-</html>
