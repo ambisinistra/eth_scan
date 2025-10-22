@@ -141,7 +141,7 @@ def index():
                 end_block = last_block_n
             else:
                 end_block = min(end_block, last_block_n)
-        result_filename, num_transactions = fetch_etherscan_transactions(wallet_address, start_block, end_block)
+        num_transactions = fetch_etherscan_transactions(wallet_address, start_block, end_block)
 
         if num_transactions:
             return redirect(url_for('transactions',
