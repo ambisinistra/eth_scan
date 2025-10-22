@@ -1,4 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, session
+from utils import validate_block_numbers
 
 import requests
 import json
@@ -104,7 +105,7 @@ def fetch_etherscan_transactions(address, start_block, end_block, api_key=None):
             json.dump(data["result"], f, indent=2)
 
         print(f"Сохранено {len(data['result'])} транзакций в {filename}")
-        return filename, len(data['result'])
+        return len(data['result'])
     elif data.get("message") == "No transactions found":
         # Treat as valid case with empty result
         os.makedirs("cache", exist_ok=True)
@@ -114,13 +115,10 @@ def fetch_etherscan_transactions(address, start_block, end_block, api_key=None):
             json.dump([], f, indent=2)
         
         print(f"No transactions found for address {address}")
-        return filename, 0
+        return 0
     else:
         error_message = data.get("message", "Unknown error")
         raise RuntimeError(f"Etherscan API error: {error_message}. Full response: {data}")
-    #else:
-    #    error_message = data.get("message", "Unknown error")
-    #    raise RuntimeError(f"Etherscan API error: {error_message}. Full response: {data}")
 
 app = Flask(__name__)
 
@@ -130,6 +128,7 @@ def index():
         wallet_address = request.form.get('wallet_address')
         start_block = int(request.form.get('start_block'))
         end_block = int(request.form.get('end_block'))
+        validate_block_numbers(start_block, end_block)
         
         #check rast ETH block possible now if it's modern and not historical search
         if end_block > 23632440:
