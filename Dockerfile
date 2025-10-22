@@ -9,8 +9,8 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Копируем код приложения
-COPY app_input.py .
-COPY .env .
+# Копируем код приложения
+COPY app_input.py utils.py .env ./
 COPY templates/ templates/
 
 # Открываем порт
