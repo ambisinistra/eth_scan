@@ -172,7 +172,7 @@ def transactions():
         all_transactions = json.load(f)
     
     all_transactions = all_transactions[::-1]  # Разворачиваем список
-    all_transactions = [tx["type"] = determine_transaction_type(tx)]
+    all_transactions = [{**tx, "type" : determine_transaction_type(tx)} for tx in all_transactions] #add transaction type field
 
     total = len(all_transactions)
     
