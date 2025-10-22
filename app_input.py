@@ -1,5 +1,5 @@
 from flask import Flask, render_template, request, redirect, url_for, session
-from utils import validate_block_numbers
+from utils import validate_block_numbers, determine_transaction_type
 
 import requests
 import json
@@ -172,6 +172,8 @@ def transactions():
         all_transactions = json.load(f)
     
     all_transactions = all_transactions[::-1]  # Разворачиваем список
+    all_transactions = [tx["type"] = determine_transaction_type(tx)]
+
     total = len(all_transactions)
     
     # Пагинация
@@ -190,7 +192,8 @@ def transactions():
             'timestamp': timestamp_to_date(tx['timeStamp']),
             'block': tx['blockNumber'],
             'status': 'Success' if tx['txreceipt_status'] == '1' else 'Failed',
-            'gas_used': tx['gasUsed']
+            'type': tx["type"],
+            'gas_used': tx['gasUsed'],
         })
     
     # Параметры пагинации

@@ -26,3 +26,35 @@ def validate_block_numbers(start_block, end_block):
         raise ValueError(f"Start block ({start_block}) must be less than or equal to end block ({end_block})")
     
     return True
+
+def determine_transaction_type(tx):
+    """
+    Determine a transaction type based on its data
+    
+    Args:
+        tx (dict): Dictionary with transaction data
+        
+    Returns:
+        str: Transactions type ('simple_eth_transfer', 'token_transfer', 
+             'smart_contract_call', 'unknown')
+    """
+    # check for a simple ETH transfer
+    if (tx.get('input') == '0x' and
+        tx.get('methodId') == '0x' and
+        tx.get('functionName') == '' and
+        int(tx.get('value', 0)) > 0):
+        return 'simple_eth_transfer'
+    
+    # check for token transfers
+    if (tx.get('methodId') in ['0xa9059cbb', '0x23b872dd'] and
+        'transfer' in tx.get('functionName', '').lower()):
+        return 'token_transfer'
+    
+    # check for a smart contract call
+    if (tx.get('input') != '0x' and
+        tx.get('methodId') != '0x' and
+        tx.get('functionName') != ''):
+        return 'smart_contract_call'
+    
+    # Если ни один из типов не подошёл
+    return 'unknown'

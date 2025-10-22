@@ -122,6 +122,7 @@
                 <th>Value (ETH)</th>
                 <th>Gas Used</th>
                 <th>Status</th>
+                <th>Transaction Type</th>
             </tr>
         </thead>
         <tbody>
@@ -137,6 +138,7 @@
                 <td class="{% if tx.status == 'Success' %}success{% else %}failed{% endif %}">
                     {{ tx.status }}
                 </td>
+                <td>{{ tx.type }}</td> 
             </tr>
             {% endfor %}
         </tbody>
