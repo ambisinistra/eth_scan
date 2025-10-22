@@ -129,9 +129,9 @@
             <tr>
                 <td>{{ tx.block }}</td>
                 <td>{{ tx.timestamp }}</td>
-                <td class="hash">{{ tx.hash[:16] }}...{{ tx.hash[-8:] }}</td>
-                <td class="address">{{ tx['from'][:10] }}...{{ tx['from'][-8:] }}</td>
-                <td class="address">{{ tx.to[:10] }}...{{ tx.to[-8:] }}</td>
+                <td class="address">{{ tx['from'] }}</td>
+                <td class="address">{{ tx.to }}</td>
+                <td class="hash">{{ tx.hash }}</td>
                 <td class="eth-value">{{ "%.6f"|format(tx.value_eth) }}</td>
                 <td>{{ tx.gas_used }}</td>
                 <td class="{% if tx.status == 'Success' %}success{% else %}failed{% endif %}">
