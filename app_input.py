@@ -104,10 +104,23 @@ def fetch_etherscan_transactions(address, start_block, end_block, api_key=None):
             json.dump(data["result"], f, indent=2)
 
         print(f"Сохранено {len(data['result'])} транзакций в {filename}")
-        return filename
+        return filename, len(data['result'])
+    elif data.get("message") == "No transactions found":
+        # Treat as valid case with empty result
+        os.makedirs("cache", exist_ok=True)
+        filename = f"cache/{address}_{start_block}_{end_block}.json"
+        
+        with open(filename, "w") as f:
+            json.dump([], f, indent=2)
+        
+        print(f"No transactions found for address {address}")
+        return filename, 0
     else:
-        print("Ошибка:", data)
-        return None
+        error_message = data.get("message", "Unknown error")
+        raise RuntimeError(f"Etherscan API error: {error_message}. Full response: {data}")
+    #else:
+    #    error_message = data.get("message", "Unknown error")
+    #    raise RuntimeError(f"Etherscan API error: {error_message}. Full response: {data}")
 
 app = Flask(__name__)
 
@@ -118,24 +131,26 @@ def index():
         start_block = int(request.form.get('start_block'))
         end_block = int(request.form.get('end_block'))
         
-        last_block_n = get_latest_block_number()
-        # Check if API call succeeded
-        if last_block_n is None:
-            raise RuntimeError ("Error: Could not fetch latest block number from Etherscan")
+        #check rast ETH block possible now if it's modern and not historical search
+        if end_block > 23632440:
+            last_block_n = get_latest_block_number()
+            # Check if API call succeeded
+            if last_block_n is None:
+                raise RuntimeError ("Error: Could not fetch latest block number from Etherscan")
 
-        if end_block is None:
-            end_block = last_block_n
-        else:
-            end_block = min(end_block, last_block_n)
-        result_filename = fetch_etherscan_transactions(wallet_address, start_block, end_block)
+            if end_block is None:
+                end_block = last_block_n
+            else:
+                end_block = min(end_block, last_block_n)
+        result_filename, num_transactions = fetch_etherscan_transactions(wallet_address, start_block, end_block)
 
-        if result_filename:
+        if num_transactions:
             return redirect(url_for('transactions',
                       wallet_address=wallet_address,
                       start_block=start_block,
                       end_block=end_block))
         else:
-            return "Ошибка при получении транзакций", 400
+            return "There is no transactions for the requested wallet in the requested period of time", 200
     
     return render_template('input_form.html')
 
@@ -145,7 +160,7 @@ def transactions():
     wallet_address = request.args.get('wallet_address')
     start_block = request.args.get('start_block')
     end_block = request.args.get('end_block')
-    filename = filename = f"cache/{wallet_address}_{start_block}_{end_block}.json"
+    filename = f"cache/{wallet_address}_{start_block}_{end_block}.json"
     if not filename or not os.path.exists(filename):
         return redirect(url_for('index'))
     
