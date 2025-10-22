@@ -24,6 +24,41 @@ def wei_to_eth(wei_value):
 def timestamp_to_date(timestamp):
     return datetime.fromtimestamp(int(timestamp)).strftime('%Y-%m-%d %H:%M:%S')
 
+def get_latest_block_number(api_key=None):
+    # Если ключ не передан, берём из переменных окружения
+    if api_key is None:
+        api_key = os.getenv("ETHERSCAN_API_KEY")
+        if not api_key:
+            print("Ошибка: API ключ не найден в переменных окружения")
+            return None
+        
+    url = "https://api.etherscan.io/v2/api"
+    params = {
+        "chainid": 1,
+        "module": "proxy",
+        "action": "eth_blockNumber",
+        "apikey": api_key
+    }
+    resp = requests.get(url, params=params, timeout=10)
+    resp.raise_for_status()
+    data = resp.json()
+    # Пример ответа:
+    # {
+    #   "jsonrpc":"2.0",
+    #   "id":1,
+    #   "result":"0x10d4f"    <-- блок в hex
+    # }
+    if "result" in data:
+        hex_block = data["result"]
+        try:
+            block_int = int(hex_block, 16)
+        except ValueError:
+            raise RuntimeError("Не удалось распознать hex блока: " + hex_block)
+        return block_int
+    else:
+        # обработка ошибок
+        raise RuntimeError("Ошибка ответа Etherscan или поле result отсутствует: " + str(data))
+
 def fetch_etherscan_transactions(address, start_block, end_block, api_key=None):
     """
     Получает список транзакций для указанного адреса через Etherscan API.
@@ -83,15 +118,22 @@ def index():
         start_block = request.form.get('start_block')
         end_block = request.form.get('end_block')
         
-        # Здесь вызывайте свою функцию
+        last_block_n = get_latest_block_number()
+        # Check if API call succeeded
+        if last_block_n is None:
+            raise RuntimeError ("Error: Could not fetch latest block number from Etherscan")
+
+        if end_block is None:
+            end_block = last_block_n
+        else:
+            end_block = min(end_block, last_block_n)
         result_filename = fetch_etherscan_transactions(wallet_address, start_block, end_block)
-        
+
         if result_filename:
             return redirect(url_for('transactions',
                       wallet_address=wallet_address,
                       start_block=start_block,
-                      end_block=end_block,
-                      filename=result_filename))
+                      end_block=end_block))
         else:
             return "Ошибка при получении транзакций", 400
     
@@ -103,7 +145,7 @@ def transactions():
     wallet_address = request.args.get('wallet_address')
     start_block = request.args.get('start_block')
     end_block = request.args.get('end_block')
-    filename = request.args.get('filename')
+    filename = filename = f"cache/{wallet_address}_{start_block}_{end_block}.json"
     if not filename or not os.path.exists(filename):
         return redirect(url_for('index'))
     
