@@ -104,6 +104,8 @@
     <h1>🔗 Ethereum Transaction Viewer</h1>
     
     <div class="info">
+        <a href="{{ url_for('index') }}" class="home-button">← Back to Search</a>
+        <br><br>
         <strong>Total Transactions:</strong> {{ total }} | 
         <strong>Page:</strong> {{ page }} of {{ total_pages }} | 
         <strong>Showing:</strong> {{ transactions|length }} transactions

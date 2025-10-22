@@ -42,12 +42,31 @@
 </head>
 <body>
     <h1>Запрос данных Ethereum</h1>
-    <form method="POST">
+    <form method="POST" onsubmit="return validateForm()">
         <div class="form-group">
-            <label for="wallet_address">Etherium Wallet Address:</label>
-            <input type="text" id="wallet_address" name="wallet_address" 
-                   value="0x5B01F4728fb0f978fDa669E9cb71A1ba7E00c768" required>
+            <label for="wallet_address">Ethereum Wallet Address:</label>
+            <input type="text" id="wallet_address" name="wallet_address"
+                value="0x5B01F4728fb0f978fDa669E9cb71A1ba7E00c768"
+                pattern="^0x[a-fA-F0-9]{40}$"
+                required>
+            <small id="error-msg" style="color:red;"></small>
         </div>
+        <button type="submit">Отправить</button>
+    </form>
+
+    <script>
+    function validateForm() {
+        const addr = document.getElementById("wallet_address").value.trim();
+        const errorMsg = document.getElementById("error-msg");
+        const regex = /^0x[a-fA-F0-9]{40}$/;
+        if (!regex.test(addr)) {
+            errorMsg.textContent = "Invalid Ethereum-address format.";
+            return false;  // отменяем отправку
+        }
+        errorMsg.textContent = "";
+        return true;
+    }
+    </script>
         
         <div class="form-group">
             <label for="start_block">Starting block:</label>
