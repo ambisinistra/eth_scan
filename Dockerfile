@@ -10,8 +10,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 # Копируем код приложения
 # Копируем код приложения
-COPY app_input.py utils.py .env ./
-COPY templates/ templates/
+COPY . .
 
 # Открываем порт
 EXPOSE 5000

@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, session
 from utils import validate_block_numbers, determine_transaction_type
+from database import db, init_db  # ✅ Импортируем db и init_db
 
 import requests
 import json
@@ -60,6 +61,21 @@ def get_latest_block_number(api_key=None):
         # обработка ошибок
         raise RuntimeError("Ошибка ответа Etherscan или поле result отсутствует: " + str(data))
 
+app = Flask(__name__)
+
+# ✅ Конфигурация базы данных
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv(
+    'DATABASE_URL', 
+    'postgresql://usr:pass@psql:5432/lets_goto_it'
+)
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+# ✅ Инициализация расширения SQLAlchemy
+db.init_app(app)
+
+# ✅ Создание таблиц при запуске
+init_db(app)
+
 def fetch_etherscan_transactions(address, start_block, end_block, api_key=None):
     """
     Получает список транзакций для указанного адреса через Etherscan API.
@@ -119,8 +135,6 @@ def fetch_etherscan_transactions(address, start_block, end_block, api_key=None):
     else:
         error_message = data.get("message", "Unknown error")
         raise RuntimeError(f"Etherscan API error: {error_message}. Full response: {data}")
-
-app = Flask(__name__)
 
 @app.route('/', methods=['GET', 'POST'])
 def index():
