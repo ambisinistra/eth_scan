@@ -98,7 +98,6 @@ def fetch_etherscan_transactions(address, start_block, end_block, api_key=None):
             print("Ошибка: API ключ не найден в переменных окружения")
             return None
 
-
     url = (
         "https://api.etherscan.io/v2/api"
         f"?chainid=1"
@@ -115,14 +114,6 @@ def fetch_etherscan_transactions(address, start_block, end_block, api_key=None):
     data = response.json()
 
     if data.get("status") == "1" or data.get("message") == "OK":
-        os.makedirs("cache", exist_ok=True)
-        filename = f"cache/{address}_{start_block}_{end_block}.json"
-
-        with open(filename, "w") as f:
-            json.dump(data["result"], f, indent=2)
-
-        print(f"Сохранено {len(data['result'])} транзакций в {filename}")
-        # ✅ Сохраняем в базу данных
         try:
             # 1. Создаём запись в search_queries
             search_query = SearchQuery(
@@ -132,14 +123,10 @@ def fetch_etherscan_transactions(address, start_block, end_block, api_key=None):
             )
             db.session.add(search_query)
             db.session.flush()  # Получаем id, не коммитя транзакцию
-            
-            # Загружаем транзакции из файла
-            with open(filename, 'r') as f:
-                transactions = json.load(f)
 
             # 2. Подготавливаем данные для bulk insert
             transactions_data = []
-            for tx in transactions:
+            for tx in data["result"] :
                 transactions_data.append({
                     'query_id': search_query.id,
                     'searched_wallet_address': address,
@@ -170,12 +157,6 @@ def fetch_etherscan_transactions(address, start_block, end_block, api_key=None):
         return len(data['result'])
     elif data.get("message") == "No transactions found":
         # Treat as valid case with empty result
-        os.makedirs("cache", exist_ok=True)
-        filename = f"cache/{address}_{start_block}_{end_block}.json"
-        
-        with open(filename, "w") as f:
-            json.dump([], f, indent=2)
-
         # ✅ Сохраняем пустой запрос в БД
         try:
             search_query = SearchQuery(
@@ -233,9 +214,6 @@ def transactions():
     wallet_address = request.args.get('wallet_address')
     start_block = request.args.get('start_block')
     end_block = request.args.get('end_block')
-    filename = f"cache/{wallet_address}_{start_block}_{end_block}.json"
-    if not filename or not os.path.exists(filename):
-        return redirect(url_for('index'))
     
     # Получаем номер страницы
     page = request.args.get('page', 1, type=int)
@@ -283,8 +261,7 @@ def transactions():
                             total=total,
                             wallet_address=wallet_address,
                             start_block=start_block,      
-                            end_block=end_block,          
-                            filename=filename)
+                            end_block=end_block)
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5000, debug=True)
