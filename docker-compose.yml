@@ -1,0 +1,34 @@
+version: '3.9'
+services:
+  psql:
+    image: postgres:15
+    environment:
+      POSTGRES_USER: usr
+      POSTGRES_PASSWORD: pass
+      POSTGRES_DB: lets_goto_it
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data  # named volume
+    networks:
+      - app-network
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - '5000:5000'
+    depends_on:
+      - psql
+    environment:
+      DATABASE_URL: postgresql://usr:pass@psql:5432/lets_goto_it
+    networks:
+      - app-network
+
+volumes:
+  postgres_data:  # Docker управляет этим volume
+
+networks:
+  app-network:
+    driver: bridge
