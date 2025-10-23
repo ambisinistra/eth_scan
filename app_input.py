@@ -123,7 +123,7 @@ def fetch_etherscan_transactions(address, start_block, end_block, api_key=None):
 
         print(f"Сохранено {len(data['result'])} транзакций в {filename}")
         # ✅ Сохраняем в базу данных
-        if True:
+        try:
             # 1. Создаём запись в search_queries
             search_query = SearchQuery(
                 wallet_address=address,
@@ -163,9 +163,9 @@ def fetch_etherscan_transactions(address, start_block, end_block, api_key=None):
             # 3. Коммитим всё вместе
             db.session.commit()
             
-        #except Exception as e:
-        #    db.session.rollback()  # Откатываем изменения при ошибке
-        #    print(f"❌ Ошибка при сохранении в БД: {e}")
+        except Exception as e:
+            db.session.rollback()  # Откатываем изменения при ошибке
+            print(f"❌ Ошибка при сохранении в БД: {e}")
             # Продолжаем работу - файл уже сохранён
         return len(data['result'])
     elif data.get("message") == "No transactions found":
@@ -175,6 +175,20 @@ def fetch_etherscan_transactions(address, start_block, end_block, api_key=None):
         
         with open(filename, "w") as f:
             json.dump([], f, indent=2)
+
+        # ✅ Сохраняем пустой запрос в БД
+        try:
+            search_query = SearchQuery(
+                wallet_address=address,
+                start_block=start_block,
+                end_block=end_block
+            )
+            db.session.add(search_query)
+            db.session.commit()
+            print(f"✅ Сохранён пустой запрос в БД: query_id={search_query.id}")
+        except Exception as e:
+            db.session.rollback()
+            print(f"❌ Ошибка при сохранении пустого запроса в БД: {e}")
         
         print(f"No transactions found for address {address}")
         return 0
