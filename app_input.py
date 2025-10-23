@@ -1,6 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, session
 from utils import validate_block_numbers, determine_transaction_type
-from database import db, init_db  # ✅ Импортируем db и init_db
+from database import db, init_db, SearchQuery, Transaction  # ✅ Добавляем импорт моделей
+from sqlalchemy.dialects.postgresql import insert
 
 import requests
 import json
@@ -68,7 +69,7 @@ app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv(
     'DATABASE_URL', 
     'postgresql://usr:pass@psql:5432/lets_goto_it'
 )
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True
 
 # ✅ Инициализация расширения SQLAlchemy
 db.init_app(app)
@@ -121,6 +122,51 @@ def fetch_etherscan_transactions(address, start_block, end_block, api_key=None):
             json.dump(data["result"], f, indent=2)
 
         print(f"Сохранено {len(data['result'])} транзакций в {filename}")
+        # ✅ Сохраняем в базу данных
+        if True:
+            # 1. Создаём запись в search_queries
+            search_query = SearchQuery(
+                wallet_address=address,
+                start_block=start_block,
+                end_block=end_block
+            )
+            db.session.add(search_query)
+            db.session.flush()  # Получаем id, не коммитя транзакцию
+            
+            # Загружаем транзакции из файла
+            with open(filename, 'r') as f:
+                transactions = json.load(f)
+
+            # 2. Подготавливаем данные для bulk insert
+            transactions_data = []
+            for tx in transactions:
+                transactions_data.append({
+                    'query_id': search_query.id,
+                    'searched_wallet_address': address,
+                    'hash': tx['hash'],
+                    'from_address': tx['from'],
+                    'to_address': tx.get('to', ''),
+                    'value': int(tx['value']),
+                    'timestamp': datetime.fromtimestamp(int(tx['timeStamp'])),
+                    'block_number': int(tx['blockNumber']),
+                    'txreceipt_status': tx['txreceipt_status'],
+                    'gas_used': int(tx['gasUsed']),
+                    'transaction_type': determine_transaction_type(tx)
+                })
+            
+            # 3. Используем INSERT ... ON CONFLICT DO NOTHING
+            if transactions_data:
+                stmt = insert(Transaction).values(transactions_data)
+                stmt = stmt.on_conflict_do_nothing(index_elements=['hash'])
+                db.session.execute(stmt)
+            
+            # 3. Коммитим всё вместе
+            db.session.commit()
+            
+        #except Exception as e:
+        #    db.session.rollback()  # Откатываем изменения при ошибке
+        #    print(f"❌ Ошибка при сохранении в БД: {e}")
+            # Продолжаем работу - файл уже сохранён
         return len(data['result'])
     elif data.get("message") == "No transactions found":
         # Treat as valid case with empty result

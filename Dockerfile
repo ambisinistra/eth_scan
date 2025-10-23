@@ -2,6 +2,9 @@ FROM python:3.11-slim
 
 WORKDIR /app
 
+# ✅ Отключаем буферизацию Python
+ENV PYTHONUNBUFFERED=1
+
 # Копируем файл зависимостей
 COPY requirements.txt .
 
