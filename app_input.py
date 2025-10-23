@@ -183,7 +183,9 @@ def index():
         wallet_address = request.form.get('wallet_address')
         start_block = int(request.form.get('start_block'))
         end_block = int(request.form.get('end_block'))
-        validate_block_numbers(start_block, end_block)
+        everything_ok, error_msg = validate_block_numbers(start_block, end_block)
+        if not everything_ok:
+            return error_msg, 200
         
         #check rast ETH block possible now if it's modern and not historical search
         if end_block > 23632440:
@@ -204,7 +206,11 @@ def index():
                       start_block=start_block,
                       end_block=end_block))
         else:
-            return "There is no transactions for the requested wallet in the requested period of time", 200
+            # ✅ Рендерим страницу с сообщением о пустом результате
+            return render_template('no_transaction.html',
+                                 wallet_address=wallet_address,
+                                 start_block=start_block,
+                                 end_block=end_block)
     
     return render_template('input_form.html')
 

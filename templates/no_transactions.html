@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>No Transactions Found</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 50px auto;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        h1 {
+            color: #e74c3c;
+        }
+        .info {
+            background: #f8f9fa;
+            padding: 20px;
+            border-radius: 5px;
+            margin: 20px 0;
+            text-align: left;
+        }
+        .info p {
+            margin: 10px 0;
+        }
+        .info strong {
+            color: #2c3e50;
+        }
+        a {
+            display: inline-block;
+            margin-top: 20px;
+            padding: 10px 20px;
+            background-color: #3498db;
+            color: white;
+            text-decoration: none;
+            border-radius: 5px;
+        }
+        a:hover {
+            background-color: #2980b9;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>No Transactions Found</h1>
+        <p>There are no transactions for the requested wallet in the specified block range.</p>
+        
+        <div class="info">
+            <p><strong>Wallet Address:</strong> {{ wallet_address }}</p>
+            <p><strong>Start Block:</strong> {{ start_block }}</p>
+            <p><strong>End Block:</strong> {{ end_block }}</p>
+        </div>
+        
+        <a href="{{ url_for('index') }}">Try Another Search</a>
+        <a href="{{ url_for('history') }}" style="background-color: #95a5a6;">View Search History</a>
+    </div>
+</body>
+</html>
