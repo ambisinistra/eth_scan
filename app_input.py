@@ -207,7 +207,7 @@ def index():
                       end_block=end_block))
         else:
             # ✅ Рендерим страницу с сообщением о пустом результате
-            return render_template('no_transaction.html',
+            return render_template('no_transactions.html',
                                  wallet_address=wallet_address,
                                  start_block=start_block,
                                  end_block=end_block)
