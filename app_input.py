@@ -1,5 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, session
 from utils import validate_block_numbers, determine_transaction_type
+from database import db, init_db, SearchQuery, Transaction  # ✅ Добавляем импорт моделей
+from sqlalchemy.dialects.postgresql import insert
 
 import requests
 import json
@@ -60,6 +62,21 @@ def get_latest_block_number(api_key=None):
         # обработка ошибок
         raise RuntimeError("Ошибка ответа Etherscan или поле result отсутствует: " + str(data))
 
+app = Flask(__name__)
+
+# ✅ Конфигурация базы данных
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv(
+    'DATABASE_URL', 
+    'postgresql://usr:pass@psql:5432/lets_goto_it'
+)
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = True
+
+# ✅ Инициализация расширения SQLAlchemy
+db.init_app(app)
+
+# ✅ Создание таблиц при запуске
+init_db(app)
+
 def fetch_etherscan_transactions(address, start_block, end_block, api_key=None):
     """
     Получает список транзакций для указанного адреса через Etherscan API.
@@ -81,7 +98,6 @@ def fetch_etherscan_transactions(address, start_block, end_block, api_key=None):
             print("Ошибка: API ключ не найден в переменных окружения")
             return None
 
-
     url = (
         "https://api.etherscan.io/v2/api"
         f"?chainid=1"
@@ -98,21 +114,62 @@ def fetch_etherscan_transactions(address, start_block, end_block, api_key=None):
     data = response.json()
 
     if data.get("status") == "1" or data.get("message") == "OK":
-        os.makedirs("cache", exist_ok=True)
-        filename = f"cache/{address}_{start_block}_{end_block}.json"
+        try:
+            # 1. Создаём запись в search_queries
+            search_query = SearchQuery(
+                wallet_address=address,
+                start_block=start_block,
+                end_block=end_block
+            )
+            db.session.add(search_query)
+            db.session.flush()  # Получаем id, не коммитя транзакцию
 
-        with open(filename, "w") as f:
-            json.dump(data["result"], f, indent=2)
-
-        print(f"Сохранено {len(data['result'])} транзакций в {filename}")
+            # 2. Подготавливаем данные для bulk insert
+            transactions_data = []
+            for tx in data["result"] :
+                transactions_data.append({
+                    'query_id': search_query.id,
+                    'searched_wallet_address': address,
+                    'hash': tx['hash'],
+                    'from_address': tx['from'],
+                    'to_address': tx.get('to', ''),
+                    'value': int(tx['value']),
+                    'timestamp': datetime.fromtimestamp(int(tx['timeStamp'])),
+                    'block_number': int(tx['blockNumber']),
+                    'txreceipt_status': tx['txreceipt_status'],
+                    'gas_used': int(tx['gasUsed']),
+                    'transaction_type': determine_transaction_type(tx)
+                })
+            
+            # 3. Используем INSERT ... ON CONFLICT DO NOTHING
+            if transactions_data:
+                stmt = insert(Transaction).values(transactions_data)
+                stmt = stmt.on_conflict_do_nothing(index_elements=['hash'])
+                db.session.execute(stmt)
+            
+            # 3. Коммитим всё вместе
+            db.session.commit()
+            
+        except Exception as e:
+            db.session.rollback()  # Откатываем изменения при ошибке
+            print(f"❌ Ошибка при сохранении в БД: {e}")
+            # Продолжаем работу - файл уже сохранён
         return len(data['result'])
     elif data.get("message") == "No transactions found":
         # Treat as valid case with empty result
-        os.makedirs("cache", exist_ok=True)
-        filename = f"cache/{address}_{start_block}_{end_block}.json"
-        
-        with open(filename, "w") as f:
-            json.dump([], f, indent=2)
+        # ✅ Сохраняем пустой запрос в БД
+        try:
+            search_query = SearchQuery(
+                wallet_address=address,
+                start_block=start_block,
+                end_block=end_block
+            )
+            db.session.add(search_query)
+            db.session.commit()
+            print(f"✅ Сохранён пустой запрос в БД: query_id={search_query.id}")
+        except Exception as e:
+            db.session.rollback()
+            print(f"❌ Ошибка при сохранении пустого запроса в БД: {e}")
         
         print(f"No transactions found for address {address}")
         return 0
@@ -120,15 +177,15 @@ def fetch_etherscan_transactions(address, start_block, end_block, api_key=None):
         error_message = data.get("message", "Unknown error")
         raise RuntimeError(f"Etherscan API error: {error_message}. Full response: {data}")
 
-app = Flask(__name__)
-
 @app.route('/', methods=['GET', 'POST'])
 def index():
     if request.method == 'POST':
         wallet_address = request.form.get('wallet_address')
         start_block = int(request.form.get('start_block'))
         end_block = int(request.form.get('end_block'))
-        validate_block_numbers(start_block, end_block)
+        everything_ok, error_msg = validate_block_numbers(start_block, end_block)
+        if not everything_ok:
+            return error_msg, 200
         
         #check rast ETH block possible now if it's modern and not historical search
         if end_block > 23632440:
@@ -149,7 +206,11 @@ def index():
                       start_block=start_block,
                       end_block=end_block))
         else:
-            return "There is no transactions for the requested wallet in the requested period of time", 200
+            # ✅ Рендерим страницу с сообщением о пустом результате
+            return render_template('no_transactions.html',
+                                 wallet_address=wallet_address,
+                                 start_block=start_block,
+                                 end_block=end_block)
     
     return render_template('input_form.html')
 
@@ -159,41 +220,37 @@ def transactions():
     wallet_address = request.args.get('wallet_address')
     start_block = request.args.get('start_block')
     end_block = request.args.get('end_block')
-    filename = f"cache/{wallet_address}_{start_block}_{end_block}.json"
-    if not filename or not os.path.exists(filename):
-        return redirect(url_for('index'))
     
     # Получаем номер страницы
     page = request.args.get('page', 1, type=int)
     per_page = 20
     
-    # Загружаем транзакции из файла
-    with open(filename, 'r') as f:
-        all_transactions = json.load(f)
+    # ✅ Загружаем транзакции из базы данных (новый синтаксис Flask-SQLAlchemy 3.x)
+    query = db.session.query(Transaction).filter(
+        Transaction.searched_wallet_address == wallet_address,
+        Transaction.block_number >= start_block,
+        Transaction.block_number <= end_block
+    ).order_by(Transaction.block_number.desc())
     
-    all_transactions = all_transactions[::-1]  # Разворачиваем список
-    all_transactions = [{**tx, "type" : determine_transaction_type(tx)} for tx in all_transactions] #add transaction type field
-
-    total = len(all_transactions)
+    # Получаем общее количество
+    total = query.count()
     
     # Пагинация
-    start = (page - 1) * per_page
-    end = start + per_page
-    transactions_page = all_transactions[start:end]
+    transactions_page = query.offset((page - 1) * per_page).limit(per_page).all()
     
-    # Обрабатываем данные
+    # ✅ Обрабатываем данные - используем точку вместо квадратных скобок!
     processed_txs = []
     for tx in transactions_page:
         processed_txs.append({
-            'hash': tx['hash'],
-            'from': tx['from'],
-            'to': tx['to'],
-            'value_eth': wei_to_eth(tx['value']),
-            'timestamp': timestamp_to_date(tx['timeStamp']),
-            'block': tx['blockNumber'],
-            'status': 'Success' if tx['txreceipt_status'] == '1' else 'Failed',
-            'type': tx["type"],
-            'gas_used': tx['gasUsed'],
+            'hash': tx.hash,                    # ✅ Было: tx['hash']
+            'from': tx.from_address,            # ✅ Было: tx['from']
+            'to': tx.to_address or '',          # ✅ Было: tx['to']
+            'value_eth': wei_to_eth(str(tx.value)),  # ✅ Было: tx['value']
+            'timestamp': tx.timestamp.strftime('%Y-%m-%d %H:%M:%S'),  # ✅ Уже datetime объект
+            'block': tx.block_number,           # ✅ Было: tx['blockNumber']
+            'status': 'Success' if tx.txreceipt_status == '1' else 'Failed',  # ✅
+            'type': tx.transaction_type,        # ✅ Было: tx['type']
+            'gas_used': tx.gas_used,            # ✅ Было: tx['gasUsed']
         })
     
     # Параметры пагинации
@@ -210,8 +267,7 @@ def transactions():
                             total=total,
                             wallet_address=wallet_address,
                             start_block=start_block,      
-                            end_block=end_block,          
-                            filename=filename)
+                            end_block=end_block)
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5000, debug=True)
