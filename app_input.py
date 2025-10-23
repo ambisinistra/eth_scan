@@ -227,33 +227,32 @@ def transactions():
     page = request.args.get('page', 1, type=int)
     per_page = 20
     
-    # Загружаем транзакции из файла
-    with open(filename, 'r') as f:
-        all_transactions = json.load(f)
+    # ✅ Загружаем транзакции из базы данных (новый синтаксис Flask-SQLAlchemy 3.x)
+    query = db.session.query(Transaction).filter(
+        Transaction.searched_wallet_address == wallet_address,
+        Transaction.block_number >= start_block,
+        Transaction.block_number <= end_block
+    ).order_by(Transaction.block_number.desc())
     
-    all_transactions = all_transactions[::-1]  # Разворачиваем список
-    all_transactions = [{**tx, "type" : determine_transaction_type(tx)} for tx in all_transactions] #add transaction type field
-
-    total = len(all_transactions)
+    # Получаем общее количество
+    total = query.count()
     
     # Пагинация
-    start = (page - 1) * per_page
-    end = start + per_page
-    transactions_page = all_transactions[start:end]
+    transactions_page = query.offset((page - 1) * per_page).limit(per_page).all()
     
-    # Обрабатываем данные
+    # ✅ Обрабатываем данные - используем точку вместо квадратных скобок!
     processed_txs = []
     for tx in transactions_page:
         processed_txs.append({
-            'hash': tx['hash'],
-            'from': tx['from'],
-            'to': tx['to'],
-            'value_eth': wei_to_eth(tx['value']),
-            'timestamp': timestamp_to_date(tx['timeStamp']),
-            'block': tx['blockNumber'],
-            'status': 'Success' if tx['txreceipt_status'] == '1' else 'Failed',
-            'type': tx["type"],
-            'gas_used': tx['gasUsed'],
+            'hash': tx.hash,                    # ✅ Было: tx['hash']
+            'from': tx.from_address,            # ✅ Было: tx['from']
+            'to': tx.to_address or '',          # ✅ Было: tx['to']
+            'value_eth': wei_to_eth(str(tx.value)),  # ✅ Было: tx['value']
+            'timestamp': tx.timestamp.strftime('%Y-%m-%d %H:%M:%S'),  # ✅ Уже datetime объект
+            'block': tx.block_number,           # ✅ Было: tx['blockNumber']
+            'status': 'Success' if tx.txreceipt_status == '1' else 'Failed',  # ✅
+            'type': tx.transaction_type,        # ✅ Было: tx['type']
+            'gas_used': tx.gas_used,            # ✅ Было: tx['gasUsed']
         })
     
     # Параметры пагинации
