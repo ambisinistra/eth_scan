@@ -1,96 +1,80 @@
 # Ethereum Transaction Viewer
 
-Минимальное Flask приложение для просмотра транзакций Ethereum с пагинацией.
+A Flask application for viewing Ethereum transactions with pagination.
 
-## Структура проекта
+## Project Structure
 
 ```
 project/
-├── app.py              # Основной файл приложения
-├── result.txt          # JSON файл с транзакциями
+├── app_input.py              # Main application file
+├── result.txt          # JSON file with transactions
 ├── templates/
-│   └── index.html      # HTML шаблон
-├── requirements.txt    # Зависимости Python
-├── Dockerfile          # Конфигурация Docker
-└── README.md          # Инструкция
+│   └── *.html      # HTML templates
+├── requirements.txt    # Python dependencies
+├── Dockerfile          # Docker configuration
+└── README.md           # Documentation
 ```
 
-## Запуск без Docker
+## Running Without Docker
 
-### 1. Установите зависимости:
+### 1. Install dependencies:
 ```bash
 pip install -r requirements.txt
 ```
 
-### 2. Запустите приложение:
+### 2. Start the application:
 ```bash
-python app.py
+python app_input.py
 ```
 
-### 3. Откройте браузер:
+### 3. Open in your browser:
 ```
 http://localhost:5000
+http://127.0.0.1:5000
 ```
 
-## Запуск с Docker
+## Running With Docker
 
-### 1. Соберите образ:
+### 1. Build the image:
 ```bash
 docker build -t eth-viewer .
 ```
 
-### 2. Запустите контейнер:
+### 2. Run the container:
 ```bash
 docker run -p 5000:5000 eth-viewer
 ```
 
-### 3. Откройте браузер:
+### 3. Open in your browser:
 ```
 http://localhost:5000
+http://127.0.0.1:5000
 ```
 
-## Как работает приложение
+## How the Application Works
 
-### Основные компоненты:
+### Main Components
 
-1. **app.py** - Главный файл Flask приложения:
-   - `load_transactions()` - загружает JSON из файла
-   - `wei_to_eth()` - конвертирует Wei в ETH (1 ETH = 10^18 Wei)
-   - `timestamp_to_date()` - конвертирует Unix timestamp в читаемую дату
-   - Роут `/` - обрабатывает запросы и отображает транзакции
+This application sends a request to the Etherscan API to retrieve Ethereum transactions and displays the results in a web browser using Flask.  
+It supports pagination (20 transactions per page) and shows key transaction details such as block number, sender, receiver, value in ETH, and status.
 
-2. **Пагинация**:
-   - По 20 транзакций на страницу
-   - Параметр `?page=N` в URL для навигации
-   - Кнопки: First, Previous, Next, Last
+### Example URLs:
+- First page: `http://localhost:5000/`
 
-3. **Отображение данных**:
-   - Таблица с транзакциями
-   - Сокращенные адреса и хеши для удобства
-   - Цветовая индикация статуса (зелёный/красный)
-   - Значения ETH с 6 знаками после запятой
 
-### Пример URL:
-- Первая страница: `http://localhost:5000/`
-- Вторая страница: `http://localhost:5000/?page=2`
-- Третья страница: `http://localhost:5000/?page=3`
+## Displayed Fields:
 
-## Что отображается:
+- **Block** – block number  
+- **Timestamp** – date and time of the transaction  
+- **Hash** – shortened transaction hash  
+- **From** – shortened sender address  
+- **To** – shortened receiver address  
+- **Value (ETH)** – transaction amount in ETH  
+- **Gas Used** – gas used for the transaction  
+- **Status** – transaction status (Success/Failed)
 
-- **Block** - номер блока
-- **Timestamp** - дата и время транзакции
-- **Hash** - хеш транзакции (сокращенный)
-- **From** - адрес отправителя (сокращенный)
-- **To** - адрес получателя (сокращенный)
-- **Value (ETH)** - сумма в ETH
-- **Gas Used** - использованный газ
-- **Status** - статус транзакции (Success/Failed)
+## Next Steps for Full Implementation:
 
-## Следующие шаги для полной реализации:
-
-1. Добавить PostgreSQL для хранения данных
-2. Интегрировать Etherscan API для загрузки транзакций
-3. Добавить форму для ввода адреса и блока
-4. Реализовать фильтры (дата, направление транзакции)
-5. Добавить расчет баланса на конкретную дату
-6. Поддержка токенов (ERC-20)
+1. Add PostgreSQL for data storage    
+2. Implement filters (date, transaction direction)    
+3. Add ERC-20 token support
